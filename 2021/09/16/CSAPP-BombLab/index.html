@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="index, follow"><title>CSAPP-BombLab • ZHA-idea</title><meta name="description" content="CSAPP-BombLab - ahz-r3verse"><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="https://unpkg.com/nanoreset@3.0.1/nanoreset.min.css"><link rel="stylesheet" href="/css/theme.css"><link rel="search" type="application/opensearchdescription+xml" href="/atom.xml" title="ZHA-idea"><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="ZHA-idea" type="application/atom+xml">
+</head><body><div class="wrap" id="barba-wrapper"><header><h1 class="branding"><a href="/" title="ZHA-idea"><img class="logo-image" src="/logo.svg" alt="logo"></a></h1><ul class="nav nav-list"><li class="nav-list-item"><a class="nav-list-link no-barba" href="/" target="_self">HOME</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/about" target="_self">ABOUT</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/archives" target="_self">ARCHIVES</a></li><li class="nav-list-item"></ul></header><div class="barba-container"><main class="container"><div class="post"><article class="post-block"><h1 class="post-title">CSAPP-BombLab</h1><div class="post-info"><a></a>2021-09-16</div><div class="post-content"><h1 id="CSAPP-BombLab：拆包战士"><a href="#CSAPP-BombLab：拆包战士" class="headerlink" title="CSAPP-BombLab：拆包战士"></a>CSAPP-BombLab：拆包战士</h1><blockquote>
+<p>最近在做csapp的实验，刚做完datalab（还差浮点数部分的三道）感觉自己智商不够用。bomblab更是震撼我妈一百年，先不说要看反汇编代码，光是调试工具什么<code>gdb</code>我都不会用。害，当然是要从头学习了</p>
+</blockquote>
+<p>BombLab题目是说有 one 个 Evil 人 create 了一个 bomb，这个 bomb 总共有6道 phase，要work out完所有的六道 phase 才能 defuse 炸弹。</p>
+<h2 id="Phase1"><a href="#Phase1" class="headerlink" title="Phase1"></a>Phase1</h2><p>看汇编代码上来就把<code>0x402400</code>塞到了<code>%esi</code>里，显然这是一个十六进制数，是内存地址的可能性非常大。而反汇编代码程序区的最高地址位是<code>0x4022ac</code>，那么根据C语言内存结构来看：</p>
+<p><img src="http://zha.glimmer.space/uploads/big/799ddf696ca3e31b3154505811d18879.png"></p>
+<p>这个地址很可能是常量，在gdb中使用<code>x /s 0x402400</code>查看这个地址的常量。</p>
+<p><img src="http://zha.glimmer.space/uploads/big/13c6e3c0969c02ed6300fa01a90527df.png"></p>
+<p>第一个Phase的答案就是这行字符串</p>
+<p><code>Border relations with Canada have never benn better.</code></p>
+<blockquote>
+<p>gdb指令x表示查看内存内容，/s表示以字符串形式查看</p>
+</blockquote>
+<h2 id="Phase2"><a href="#Phase2" class="headerlink" title="Phase2"></a>Phase2</h2><blockquote>
+<p>gdb的另一个指令“layout regs”可以显示寄存器中的值</p>
+</blockquote>
+<p>从这部分开始，不会用gdb就真的做不出来了<del>（我们gdb真是绝绝子啊</del></p>
+<p>首先注意到<code>phase_2</code>的函数调用了一个名叫<code>read_six_numbers</code>的函数，顾名思义是读入了6个整数。于是测试一下，在第二行输入<code>1 2 3 4 5 6</code>测试，并且用gdb -layout regs边看寄存器地址边调试，发现输入的6个数据被存储在了<code>%rsp</code>附近。(具体为什么存在栈里而不是寄存器里，可能就要看read_line了，我不想看)</p>
+<p>然后<code>phase_2</code>的代码里面有一段循环，大概意思是<code>%rbx</code>每次+4，直到<code>%rbp=%rbx</code>时候跳出循环，循环内容是<code>%eax</code>值每次*2并与栈中数字比较。<code>0x400f0a</code>这一行可以看出第一个值是1，因此答案是<code>1 2 4 8 16 32</code></p>
+<blockquote>
+<p>别看写的少，做题好难哦</p>
+<p>思考：以这一题里的例子，for循环计数的一种实现方法可以是用 rbx 和 rbp 两个寄存器来实现。</p>
+</blockquote>
+<h4 id="栈帧"><a href="#栈帧" class="headerlink" title="栈帧"></a>栈帧</h4><p>在程序运行的每个阶段，只需要栈中一部分的数据（一般就是最下面那一段）。栈帧用来记录调用未返回的位置，同时也能标记正在运行的过程栈的边界。<code>%rbp</code> 被称为基指针(Optional)</p>
+<img src="http://zha.glimmer.space/uploads/medium/6404ac9ffd50983ac61c822b740b95b1.png" style="zoom: 33%;" />
+
+<blockquote>
+<p><strong>为什么%rbp是optional的？</strong></p>
+<p>对于一般的程序来说，编译器在编译时能够知道被调用的过程所需要的确切的栈的大小，比如18个比特，然后在栈释放的时候只需要释放同样的数值即可。此时无需**%rbp**。</p>
+<p>但是有些时候编译器无法提前预知栈的大小，比如可变数组或内存缓冲区，此时必须要用到**%rbp**</p>
+</blockquote>
+<h4 id="lea？好怪哦"><a href="#lea？好怪哦" class="headerlink" title="lea？好怪哦"></a>lea？好怪哦</h4><h6 id=""><a href="#" class="headerlink" title=""></a><img src="http://zha.glimmer.space/uploads/big/b383debc45dc2c3b3749603ef7f65735.jpeg" style="zoom:25%;" /></h6><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">leaq		8(%rsp), %rdi</span><br></pre></td></tr></table></figure>
+
+<p>按理说加括号代表取这个地址的值吧，那应该翻译成 “ 把内存中<code>%rsp+8</code>位置的值赋给<code>%rdi</code> ” ；但是leaq怪得很，他不读内存，这句的意思是 “ 把<code>%rsp</code>的值+8赋给<code>%rdi</code> ” </p>
+<blockquote>
+<p><strong>这样的话LEA与ADD有啥子区别吗？</strong></p>
+<p>LEA由处理寻址的单元之一(在流水线的早期发生)，而ADD则进入ALU(算术/逻辑单元) ，以及后期发生。</p>
+<p>地址计算发生在流水线的前期，没有必要去使用成本更高的ADD指令。况且LEA指令除了做加法，也能简便地表示乘法与位移。</p>
+</blockquote>
+<h2 id="Phase3"><a href="#Phase3" class="headerlink" title="Phase3"></a>Phase3</h2><p>做着做着感觉渐入佳境了，上来看到0x4025cf，二话不说<code>gdb: x /s 0x4025cf</code>，发现这个地方是两个整数占位符，那这题可能就是要输入两个整数咯。</p>
+<p>然后看到要用到rsp，于是用<code>gdb</code>缓缓打出一个<code>break *0x400f6a</code>设置断点，再拿<code>layout regs</code><del>做一个隐藏甜品778</del>，康康寄存器是什么东西。发现<code>%rsp+8</code>的位置其实是我输入的第一个数据，于是乎<strong>第一个数据需要&lt;7</strong>，这个条件就出来了，顺手查出第二个数据存储在<code>%rsp+12</code>。<del>我们gdb真的是绝绝子呀，好用到跺jiojio！</del></p>
+<p>然后一顿操作答案就出来了：<code>1 311</code></p>
+<blockquote>
+<p>gdb x用法</p>
+<p>用gdb查看内存</p>
+<p>格式: x /nfu <addr></p>
+<p>说明<br>x 是 examine 的缩写</p>
+<p>n表示要显示的内存单元的个数</p>
+<p>f表示显示方式, 可取如下值<br>x 按十六进制格式显示变量。<br>d 按十进制格式显示变量。<br>u 按十进制格式显示无符号整型。<br>o 按八进制格式显示变量。<br>t 按二进制格式显示变量。<br>a 按十六进制格式显示变量。<br>i 指令地址格式<br>c 按字符格式显示变量。<br>f 按浮点数格式显示变量。</p>
+<p>u表示一个地址单元的长度<br>b表示单字节，<br>h表示双字节，<br>w表示四字节，<br>g表示八子节</p>
+</blockquote>
+<h2 id="Phase4"><a href="#Phase4" class="headerlink" title="Phase4"></a>Phase4</h2><p>Halfway there!</p>
+<p>点开phase_4的代码，一眼看到熟悉的</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lea    0xc(%rsp),&amp;rcx</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lea    0x8(%rsp),%rdx</span><br></pre></td></tr></table></figure>
+
+<p>肯定两个参数是存储在这个地方的（<del>能不能有点新意啊好简单哦</del></p>
+<p>然后那个看不太明白的函数<code>400bf0 &lt;__isoc99_sscanf@plt&gt;</code>，根据推测应该是将输入的参数<strong>个数</strong>赋值给<code>%eax</code>，也就是说这题依然是需要两个参数。</p>
+<p>正当我轻轻松松看汇编代码的时候，眼看phase_4就要被破解了，突然它一个转身拐进了另一个函数<func_4>。       <img src="http://zha.glimmer.space/uploads/big/77340769caf19fd29b914a7d18383b9d.jpeg" style="zoom: 25%;" /></p>
+<p>仔细观摩了代码之后发现除非<code>x = 7</code>，否则会陷入一圈又一圈的循环，跳出循环后，需要<code>y = 0</code></p>
+<p>综上，第四题答案是<code>7 0</code></p>
+<p>总感觉。。。大的要来力！</p>
+<h2 id="Phase5"><a href="#Phase5" class="headerlink" title="Phase5"></a>Phase5</h2><p>看到了一个没见过的东西：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mov    %fs:0x28,%rax</span><br><span class="line">mov    %rax,0x18(%rsp)</span><br></pre></td></tr></table></figure>
+
+<p>这个应该是<code>金丝雀值</code>，使用段寻址把金丝雀值放到<code>rsp+18</code>位置，然后用xor校验，对解题没啥大的影响。</p>
+<p>总的来说逻辑是要输入一个字符串，字符串长度必须是六个字符，然后和内存中<code>0x40245e</code>位置的字符串比较，相同的话就能通过。简简单单<code>x /s 0x40245e</code>发现这个地方的字符串是<code>flyers</code>。于是我兴冲冲填上flyers，发现炸弹还是炸了。</p>
+<p>怪！</p>
+<p>用gdb仔细调试了一波发现，这段代码会把输入的字符串加密，比如我输入的 flyers，经过加密就变成了 rvfedu 这串怪字符，这该咋办。我试着输入其他的字符串，然后看看加密后的结果。最终我发现字符串的加密很可能是一一映射的，于是我想了一个笨方法，只要找到能够映射到 flyers 的字符不就好了吗？暴力破解一通，找到了如下映射。</p>
+<figure class="highlight properties"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">y</span> : <span class="string">f</span></span><br><span class="line"><span class="attr">o</span> : <span class="string">l</span></span><br><span class="line"><span class="attr">n</span> : <span class="string">y</span></span><br><span class="line"><span class="attr">e</span> : <span class="string">e</span></span><br><span class="line"><span class="attr">f</span> : <span class="string">r</span></span><br><span class="line"><span class="attr">g</span> : <span class="string">s</span></span><br></pre></td></tr></table></figure>
+
+<p>输入 yonefg 运行，测试通过！</p>
+<p>这题到这好像完了，又好像没完，这个加密的逻辑到底是啥，等我做完phase6先</p>
+<h4 id="内存结构"><a href="#内存结构" class="headerlink" title="内存结构"></a>内存结构</h4><p>前面做题也差不多知道了，栈底的地址是<code>0x7fffffffffff</code>，转化成二进制也就是47个1。x86-64机器限制内存只用64位中的47位，即使这样也有大约128TB容量。（当然这是虚拟内存，实际内存肯定没有那么大）</p>
+<ul>
+<li><p>栈（Stack）：从<code>0x7fffffffffff</code>向下增长，最大8MB。</p>
+</li>
+<li><p>堆（Heap）：低至<code>0x600000</code>附近，高至栈附近，都是堆的可能空间，堆既可以从<code>0x600000</code>附近向上增长，也可以从栈附近向下增长。</p>
+</li>
+<li><p>Data：存放静态变量 </p>
+</li>
+<li><p>Text：存放编译后的机器代码，起点是<code>0x400000</code></p>
+</li>
+</ul>
+<h2 id="Phase6"><a href="#Phase6" class="headerlink" title="Phase6"></a>Phase6</h2><p>这提和Phase1一样，都调用了“读六个数”函数</p>
+<ol>
+<li>共要有等于6个参数</li>
+<li>每个参数在1～6之间</li>
+<li>参数间两两不能相同</li>
+<li>会把参数顺序反过来</li>
+</ol>
+<p> 在看内存的时候，发现有一块位置标记为“node1”，而且这个node1的大小是两个整数的长度，很奇怪。不过接着往下看，发现像node1一样的内存位置一共有6个，而且每个node的后8位看起来像是地址。。。写出来是这样式的：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">节点			数据区			地址位</span><br><span class="line">node1:		0x14c			</span><br><span class="line">node2:		0xa8			</span><br><span class="line">node3:		0x39c			</span><br><span class="line">node4:		0x2b3			</span><br><span class="line">node5:		0x1dd			</span><br><span class="line">node6:		0x1bb			</span><br></pre></td></tr></table></figure>
+
+<p>node。。。地址。。。这玩意不会是链表吧！</p>
+<p>果然这玩意还真是链表，输入的六个数字，规定了这6个节点的链接顺序，妙。而为了解决问题，这六个节点的前八个字节，也就是数据区必须以从大到小的顺序排列，那么就是3-4-5-6-1-2的顺序。填入3-4-5-6-1-2，Boom！炸了。经过第五题的洗礼我突然意识到这个逼题可能也有加密，尝试了多种加密方法后，发现他的加密逻辑是<code>7-输入的数字</code>，那么答案就是5-6-1-2-3-4，测试通过！</p>
+<p><img src="http://zha.glimmer.space/uploads/big/0eed51dd29ecfcfdd418610ada34caf7.png"></p>
+<h6 id="什么？phase5的加密逻辑？你说什么我听不懂啊～XD"><a href="#什么？phase5的加密逻辑？你说什么我听不懂啊～XD" class="headerlink" title="什么？phase5的加密逻辑？你说什么我听不懂啊～XD"></a><del>什么？phase5的加密逻辑？你说什么我听不懂啊～XD</del></h6></div></article></div></main><footer><div class="paginator"><a class="next" href="/2021/04/12/Mysql-JDBC-noob/">下一篇</a></div><div class="copyright"><p>&copy; 2021 <a href="http://example.com">ahz-r3verse</a><br>Powered by <a href="https://hexo.io/" rel="noreferrer" target="_blank">Hexo</a></p></div></footer></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/barba.js/1.0.0/barba.min.js"></script><script>document.addEventListener('DOMContentLoaded', function() {
+    Barba.Pjax.start()
+})</script></body></html>
