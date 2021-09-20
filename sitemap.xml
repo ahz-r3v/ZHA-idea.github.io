@@ -2,9 +2,16 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://example.com/2021/09/17/CSAPP_AttackLab/</loc>
+    
+    <lastmod>2021-09-20</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>http://example.com/2021/09/16/CSAPP-BombLab/</loc>
     
-    <lastmod>2021-09-16</lastmod>
+    <lastmod>2021-09-17</lastmod>
     
   </url>
   
@@ -25,7 +32,7 @@
 
   <url>
     <loc>http://example.com/</loc>
-    <lastmod>2021-09-16</lastmod>
+    <lastmod>2021-09-20</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -33,14 +40,21 @@
   
   <url>
     <loc>http://example.com/tags/Network-Learning/</loc>
-    <lastmod>2021-09-16</lastmod>
+    <lastmod>2021-09-20</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>http://example.com/tags/Java-Learning/</loc>
-    <lastmod>2021-09-16</lastmod>
+    <lastmod>2021-09-20</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>http://example.com/tags/CSAPP/</loc>
+    <lastmod>2021-09-20</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>

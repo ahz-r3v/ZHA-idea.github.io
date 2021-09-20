@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="index, follow"><title>CSAPP-AttackLab • ZHA-idea</title><meta name="description" content="CSAPP-AttackLab - ahz-r3verse"><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="https://unpkg.com/nanoreset@3.0.1/nanoreset.min.css"><link rel="stylesheet" href="/css/theme.css"><link rel="search" type="application/opensearchdescription+xml" href="/atom.xml" title="ZHA-idea"><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="ZHA-idea" type="application/atom+xml">
+</head><body><div class="wrap" id="barba-wrapper"><header><h1 class="branding"><a href="/" title="ZHA-idea"><img class="logo-image" src="/logo.svg" alt="logo"></a></h1><ul class="nav nav-list"><li class="nav-list-item"><a class="nav-list-link no-barba" href="/" target="_self">HOME</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/about" target="_self">ABOUT</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/archives" target="_self">ARCHIVES</a></li><li class="nav-list-item"></ul></header><div class="barba-container"><main class="container"><div class="post"><article class="post-block"><h1 class="post-title">CSAPP-AttackLab</h1><div class="post-info"><a></a>2021-09-17</div><div class="post-content"><h1 id="CSAPP-AttackLab"><a href="#CSAPP-AttackLab" class="headerlink" title="CSAPP-AttackLab"></a>CSAPP-AttackLab</h1><p>WriteUp:<a target="_blank" rel="noopener" href="http://csapp.cs.cmu.edu/3e/attacklab.pdf">http://csapp.cs.cmu.edu/3e/attacklab.pdf</a></p>
+<blockquote>
+<h2 id="题目要求"><a href="#题目要求" class="headerlink" title="题目要求"></a>题目要求</h2><p>第一部分：代码注入攻击 对于前三个阶段，您的漏洞利用字符串将攻击 CTARGET。 该程序的设置方式使堆栈位置从一次运行到下一次运行保持一致，因此可以将堆栈上的数据视为可执行代码。 这些功能使程序容易受到攻击，其中漏洞利用字符串包含可执行代码的字节编码。 </p>
+<p>第二部分：面向返回的编程<br>对程序 RTARGET 执行代码注入攻击比 CTARGET 困难得多，因为它使用两种技术来阻止此类攻击。</p>
+<h2 id="使用-HEX2RAW"><a href="#使用-HEX2RAW" class="headerlink" title="使用 HEX2RAW"></a>使用 HEX2RAW</h2><p>HEX2RAW 将十六进制格式的字符串作为输入。 在这种格式中，每个字节值由两个十六进制数字表示。 例如，字符串“012345”可以以十六进制格式输入为“30 31 32 33 34 35 00”。 （回想一下十进制数字 x 的 ASCII 码是 0x3x，并且字符串的结尾由空字节表示。） 您传递给 HEX2RAW 的十六进制字符应由空格（空格或换行符）分隔。 我们建议您在处理漏洞时用换行符分隔漏洞利用字符串的不同部分。 HEX2RAW 支持 C 风格的块注释，因此您可以标记出漏洞利用字符串的部分。 例如：</p>
+<p> <code>48 c7 c1 f0 11 40 00 /* mov $0x40011f0,%rcx */</code></p>
+<p>确保在开始和结束注释字符串（“/<em>”、“</em>/”）周围都留有空格，以便正确忽略注释。</p>
+</blockquote>
+<p><strong>ADVICE: Include the -q flag which prevents program from contacting non-existent grading server in addition to the above</strong></p>
+<h2 id="Phase1"><a href="#Phase1" class="headerlink" title="Phase1"></a>Phase1</h2><blockquote>
+<p>For Phase 1, you will not inject new code. Instead, your exploit string will redirect the program to execute an existing procedure.</p>
+</blockquote>
+<p>这一部分仅利用缓冲区溢出，getbuf函数要求输入一行字符串，要让这行字符串溢出到上一个栈帧的返回地址区域，就能使得本该返回 main 的程序跳转到 touch1 的代码。</p>
+<p>主要有两个知识点：</p>
+<ul>
+<li>栈的结构</li>
+<li>hex 与 字符串 的相互转化</li>
+</ul>
+<h5 id="栈的结构："><a href="#栈的结构：" class="headerlink" title="栈的结构："></a>栈的结构：</h5><p>字符串以倒着的顺序，从栈顶往栈底存储.字符占用1<code>byte</code>空间，也就是8个<code>bit</code>位。在栈中，地址指的是byte，每个地址有8bit的存储空间，两个16进制数表示一个byte的状态。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">两个16进制数 = 8bit = 1byte = 一个地址空间</span><br></pre></td></tr></table></figure>
+
+<p>一个地址占用 8 byte 空间，这也解释了为什么有些函数并没有向栈中暂存数据，但也要申请至少8字节的栈空间。</p>
+<p>查了一下google，这个专业名词叫栈的8字节对齐，能够提高程序运行效率</p>
+<h5 id="hex2raw："><a href="#hex2raw：" class="headerlink" title="hex2raw："></a>hex2raw：</h5><p>栈中存储的是16进制数（hex），但是函数输入是字符串形式，这时候就需要找到两者之间的映射关系。比如这一题里需要覆写的hex为<code>40 17 c0</code>，40好办，因为hex to raw的逻辑与ascii码相容，0x40的ascii码是@。</p>
+<p>但是17就比较难办了，因为ascii码中17没有显式的字符与之对应，也就是说键盘输入hex为17的字符是不现实的。这个时候只能用lab中自带的hex2raw来完成这个工作。虽然17的字符不能显式表达，但是它确实存在。</p>
+<p>命令行输入</p>
+<p><code>cat hex.txt | ./hex2raw | ./ctarget -q</code>（-q是指不给csapp的服务器发送信息）</p>
+<p>就能把hex.txt中的16进制数通过hex2raw转化成字符串形式输入进ctarget程序。</p>
+<p>⚠️注意字符串的存储是倒着来的（至少这一题中是的），所以地址也要倒着写。hex.txt内容如下：</p>
+<p><img src="http://zha.glimmer.space/uploads/medium/fecf106158cd9cdc822c16c362aeafd5.png"></p>
+<p>✅phase1通过：</p>
+<p><img src="http://zha.glimmer.space/uploads/medium/3dadc3f395d07a87997514c4803c0083.png"></p>
+<h2 id="Phase2"><a href="#Phase2" class="headerlink" title="Phase2"></a>Phase2</h2><blockquote>
+<p>Phase 2 involves injecting a small amount of code as part of your exploit string.</p>
+</blockquote>
+<p>phase2是phase1的进阶版，要在重定向的基础上，实现一个数据注入。</p>
+<p>思路是在两个函数中加插入一个函数，这个函数的bin代码放在栈上（此题中实际是堆），</p>
+<p>⚠️注意%rip以地址递增读取，返回值以地址递减读取（想象pop出栈），同一个地址内从左到右。</p>
+<p><img src="http://zha.glimmer.space/uploads/big/469280424922c6d42683dc9bbbd91646.png"></p>
+<p>内存栈入口位置：0x5561dc78</p>
+<h2 id="Phase3"><a href="#Phase3" class="headerlink" title="Phase3"></a>Phase3</h2><p>和Phase2大同小异，只不过是吧参数换成字符串形式存储在栈上，rdi寄存器里面放着个字符串的地址，</p>
+<p>要注意的是getbuf函数的栈帧在释放之后，可能会有后续的栈帧来覆盖这一部分。经过试验如果在缓冲区的40个字节里面放字符串，会被覆盖掉。</p>
+<p><img src="http://zha.glimmer.space/uploads/big/9a4da539d1971562c69b4dc3218bec5d.png"></p>
+<h2 id="Phase4"><a href="#Phase4" class="headerlink" title="Phase4"></a>Phase4</h2><p>事情开始变得有意思起来了，这一部分开始，就要用到<strong>面向返回编程</strong>（ROP）的思想进行攻击了。先来看一个例子：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">4019b5:    c7 07 48 89 c7 90    movl  $0x90c78949,(%rdi)</span><br><span class="line">4019c9:    c3                   ret</span><br></pre></td></tr></table></figure>
+
+<p>单凭这一句汇编来讲，好像没有什么值得利用的地方，但是注意movl这一句这里：<code>48 89 c7</code>，如果放在movl这一句里面表示的仅仅是一个立即数而已，但是如果把<code>48 89 c7</code>看作是操作指令的话，它代表的意思就是:<code>mov  %rax,%rdi</code>。仔细想想，如果利用这一点，是不是感觉操作空间很大了呢？（只能说，舞台很大</p>
+<img src="http://zha.glimmer.space/uploads/big/3aadccc646f4782ce724bf862ecf7238.webp" style="zoom: 33%;" />
+
+<p>至于一些常见指令的二进制表达，在writeUp里面也有提到，如下图：</p>
+<p><img src="http://zha.glimmer.space/uploads/medium/d140900993a3c982e6bf5a3039c5fbf6.png"></p>
+<p>既然是<strong>面向返回编程</strong>，就要对汇编中出现的<code>c3(ret) </code>和<code>90(nop)</code>敏感，这些往往是思路的切入点。</p>
+<p>题解就不放了，知道了这些很简单。</p>
+<h5 id="⚠️另外要注意：大端序和小端序，这题里面的数据都是小端序摆放的，且占8个字节，多余的用00填充"><a href="#⚠️另外要注意：大端序和小端序，这题里面的数据都是小端序摆放的，且占8个字节，多余的用00填充" class="headerlink" title="⚠️另外要注意：大端序和小端序，这题里面的数据都是小端序摆放的，且占8个字节，多余的用00填充"></a>⚠️另外要注意：大端序和小端序，这题里面的数据都是小端序摆放的，且占8个字节，多余的用00填充</h5><h2 id="Phase5"><a href="#Phase5" class="headerlink" title="Phase5"></a>Phase5</h2><p><del>不想写了，就这吧</del></p>
+<p>这一部分也是ROP攻击，思路和Phase4一样，但是因为要传字符串，难度会比Phase4高不少，so，不写了，<strong>摸鱼了🐟</strong></p>
+<h1 id="下次一定下次一定😅"><a href="#下次一定下次一定😅" class="headerlink" title="下次一定下次一定😅"></a>下次一定下次一定😅</h1></div></article></div></main><footer><div class="paginator"><a class="next" href="/2021/09/16/CSAPP-BombLab/">下一篇</a></div><div class="copyright"><p>&copy; 2021 <a href="http://example.com">ahz-r3verse</a><br>Powered by <a href="https://hexo.io/" rel="noreferrer" target="_blank">Hexo</a></p></div></footer></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/barba.js/1.0.0/barba.min.js"></script><script>document.addEventListener('DOMContentLoaded', function() {
+    Barba.Pjax.start()
+})</script></body></html>
