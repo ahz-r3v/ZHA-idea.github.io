@@ -1,0 +1,76 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="index, follow"><title> • ZHA-idea</title><meta name="description" content=" - ahz-r3verse"><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="https://unpkg.com/nanoreset@3.0.1/nanoreset.min.css"><link rel="stylesheet" href="/css/theme.css"><link rel="search" type="application/opensearchdescription+xml" href="/atom.xml" title="ZHA-idea"><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="ZHA-idea" type="application/atom+xml">
+</head><body><div class="wrap" id="barba-wrapper"><header><h1 class="branding"><a href="/" title="ZHA-idea"><img class="logo-image" src="/logo.svg" alt="logo"></a></h1><ul class="nav nav-list"><li class="nav-list-item"><a class="nav-list-link no-barba" href="/" target="_self">HOME</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/about" target="_self">ABOUT</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/archives" target="_self">ARCHIVES</a></li><li class="nav-list-item"></ul></header><div class="barba-container"><main class="container"><div class="post"><article class="post-block"><h1 class="post-title">(untitled)</h1><div class="post-info"><a></a>2021-10-11</div><div class="post-content"><h1 id="CSAPP-ShellLab"><a href="#CSAPP-ShellLab" class="headerlink" title="CSAPP-ShellLab"></a>CSAPP-ShellLab</h1><p>代码：<a target="_blank" rel="noopener" href="https://github.com/ZHA-idea/CSAPP_ShellLab">Github</a></p>
+<blockquote>
+<p>这一个lab要求用C语言实现一个完整的shell，感觉主要知识是shell对job的管理和进程间的信号通信。</p>
+</blockquote>
+<h2 id="1-实验介绍"><a href="#1-实验介绍" class="headerlink" title="1. 实验介绍"></a>1. 实验介绍</h2><p>在本次实验中，你将编写一个简单的支持任务控制的Uinx shell程序，本次实验的目的是加深大家对进程控制和信号的理解。</p>
+<p>实验代码的整体框架已经搭建好了，我们的任务是完成其中的某些函数。</p>
+<h2 id="2-背景知识"><a href="#2-背景知识" class="headerlink" title="2. 背景知识"></a>2. 背景知识</h2><p>控制流(control flow)：CPU执行的指令序列。</p>
+<p>异常控制流(ECF, Exceptional Control Flow)：<strong>系统为了应对系统状态的变化</strong>，使控制流发生突变，这些突变称为异常控制流。</p>
+<p>异常控制流存在于计算机系统的各个层次：</p>
+<ul>
+<li><p>底层：</p>
+</li>
+<li><ul>
+<li>异常(Exceptions)，更改控制流以应对某个系统事件，由硬件和操作系统共同实现。</li>
+</ul>
+</li>
+<li><p><img src="http://pic.zha-node.com/uploads/big/b4cbb663d9d5a0e83f386a542c63f6f8.png"></p>
+</li>
+<li><ul>
+<li>异常的分类</li>
+</ul>
+</li>
+<li><p><img src="http://pic.zha-node.com/uploads/big/d0db8d22eb5acd2c2dd6e65631a8d917.png"></p>
+</li>
+<li><p>顶层：</p>
+</li>
+<li><ul>
+<li>进程切换：由操作系统和硬件时钟共同实现</li>
+<li>信号：由操作系统实现</li>
+<li>非本地跳转：由C库实现</li>
+</ul>
+</li>
+</ul>
+<h3 id="2-1-C库函数"><a href="#2-1-C库函数" class="headerlink" title="2.1 C库函数"></a>2.1 C库函数</h3><ul>
+<li>获取进程pid</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">pid_t</span> <span class="title">getpid</span><span class="params">(<span class="keyword">void</span>)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">pid_t</span> <span class="title">getppid</span><span class="params">(<span class="keyword">void</span>)</span></span>;<span class="comment">//获取父进程pid</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>创建和终止进程</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">pid_t</span> <span class="title">fork</span><span class="params">(<span class="keyword">void</span>)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">exit</span><span class="params">(<span class="keyword">int</span> status)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>回收子进程（P516</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">pid_t</span> <span class="title">waitpid</span><span class="params">(<span class="keyword">pid_t</span> pid, <span class="keyword">int</span> *statusp, <span class="keyword">int</span> options)</span></span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-Linux信号"><a href="#2-2-Linux信号" class="headerlink" title="2.2 Linux信号"></a>2.2 Linux信号</h3><p>它通知进程系统中发生了一个某种类型的事件，在终端，可以通过<code>kill -l</code>查看所有信号</p>
+<ul>
+<li>类似于异常和中断</li>
+<li>由操作系统内核发送给进程</li>
+</ul>
+<h5 id="2-3-1-信号的发送-（P529"><a href="#2-3-1-信号的发送-（P529" class="headerlink" title="2.3.1. 信号的发送 （P529"></a>2.3.1. 信号的发送 （P529</h5><p>内核通过<strong>更新目标进程的某些状态</strong>来发送一个信号给目标进程。</p>
+<p>内核发送信号可能由于以下几种原因：</p>
+<ul>
+<li>内核检测到了某个系统事件的发生</li>
+<li>另外某个进程调用kill系统调用，要求内核给目标进程发送一个信号</li>
+</ul>
+<h5 id="2-3-2-信号的接收-（P531"><a href="#2-3-2-信号的接收-（P531" class="headerlink" title="2.3.2. 信号的接收 （P531"></a>2.3.2. 信号的接收 （P531</h5><p>信号接受的时机：</p>
+<p>当内核把进程p<strong>从内核模式切换到用户模式时</strong>，它会检查进程p的未被阻塞的待处理信号的集合(pending &amp; ~blocked)，如果集合为空，内核将控制传递到p的逻辑流中的下一条指令。然而，如果集合非空，那么内核将选择集合中的某个信号k并且强制p接收信号k。</p>
+<p><img src="http://pic.zha-node.com/uploads/big/7ab9c92e8b5f031da61cc82f66325116.png" alt="img"></p>
+<p>每个信号都有一个预定义的默认行为，进程可以使用signal函数可以修改和信号关联的默认行为。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">typedef</span> <span class="title">void</span> <span class="params">(*<span class="keyword">sighandler_t</span>)</span><span class="params">(<span class="keyword">int</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">sighandler_t</span> <span class="title">signal</span><span class="params">(<span class="keyword">int</span> signum, <span class="keyword">sighandler_t</span> handler)</span></span></span><br></pre></td></tr></table></figure>
+
+<h5 id="2-3-3-信号的阻塞-（P533"><a href="#2-3-3-信号的阻塞-（P533" class="headerlink" title="2.3.3. 信号的阻塞 （P533"></a>2.3.3. 信号的阻塞 （P533</h5><p>隐式阻塞：内核默认阻塞当前正在处理的信号</p>
+<p>显式阻塞：进程可以使用<strong>sigprocmask函数</strong>明确地阻塞和解除阻塞选定的信号</p>
+<p>某个信号s被阻塞后，进程可以接收别的进程发送来的s信号，但是暂时不对s信号进行相应。</p>
+<h3 id="2-3-Shell行为"><a href="#2-3-Shell行为" class="headerlink" title="2.3 Shell行为"></a>2.3 Shell行为</h3><p>Shell 本身是一个进程，用于代理用户与操作系统内核。</p>
+<p>Shell 建立并维护一个 Jobs 列表，Jobs 列表中维护“作业”（Job），每个作业与一个进程对应，并用 jid 唯一标识。与进程不同的是，Jobs 由 shell 维护，它定义了作业能够存在的几种状态：Running、Stopped、Terminated。</p>
+<p>当shell执行外部命令时，shell调用fork函数并在子进程中执行新进程，因此，所有在shell中调用的命令都是shell的子进程</p>
+<h2 id="3-代码"><a href="#3-代码" class="headerlink" title="3. 代码"></a>3. 代码</h2><p>代码：<a target="_blank" rel="noopener" href="https://github.com/ZHA-idea/CSAPP_ShellLab">Github</a></p>
+</div></article></div></main><footer><div class="paginator"><a class="next" href="/2021/09/17/CSAPP_AttackLab/">next</a></div><div class="copyright"><p>&copy; 2021 <a href="http://example.com">ahz-r3verse</a><br>Powered by <a href="https://hexo.io/" rel="noreferrer" target="_blank">Hexo</a></p></div></footer></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/barba.js/1.0.0/barba.min.js"></script><script>document.addEventListener('DOMContentLoaded', function() {
+    Barba.Pjax.start()
+})</script></body></html>
