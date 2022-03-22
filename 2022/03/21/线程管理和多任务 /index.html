@@ -1,0 +1,32 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="index, follow"><title>OS-多线程和多任务 • ZHA-idea</title><meta name="description" content="OS-多线程和多任务 - ahz-r3verse"><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="https://unpkg.com/nanoreset@3.0.1/nanoreset.min.css"><link rel="stylesheet" href="/css/theme.css"><link rel="search" type="application/opensearchdescription+xml" href="/atom.xml" title="ZHA-idea"><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="ZHA-idea" type="application/atom+xml">
+</head><body><div class="wrap" id="barba-wrapper"><header><h1 class="branding"><a href="/" title="ZHA-idea"><img class="logo-image" src="/logo.svg" alt="logo"></a></h1><ul class="nav nav-list"><li class="nav-list-item"><a class="nav-list-link no-barba" href="/" target="_self">HOME</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/about" target="_self">ABOUT</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/archives" target="_self">ARCHIVES</a></li><li class="nav-list-item"></ul></header><div class="barba-container"><main class="container"><div class="post"><article class="post-block"><h1 class="post-title">OS-多线程和多任务</h1><div class="post-info"><a></a>2022-03-21</div><div class="post-content"><h1 id="线程管理和多任务"><a href="#线程管理和多任务" class="headerlink" title="线程管理和多任务"></a>线程管理和多任务</h1><blockquote>
+<p>这是一个引用</p>
+</blockquote>
+<h2 id="为什么要用TTS"><a href="#为什么要用TTS" class="headerlink" title="为什么要用TTS"></a>为什么要用TTS</h2><p>几乎所有x86的现代操作系统都不使用 CPU 给的那一套，但必须要用TSS实现向更高特权级的跳转。</p>
+<p>Linux只创建了一个TSS，所有任务共享。</p>
+<ul>
+<li>结论：我们使用TTS的唯一理由是为 0 特权级的任务提供栈</li>
+</ul>
+<h2 id="向高特权级转移"><a href="#向高特权级转移" class="headerlink" title="向高特权级转移"></a>向高特权级转移</h2><ul>
+<li>的过程<ul>
+<li>进入高特权级时，cpu自动将TSS中esp0作为栈指针，然后后来的压栈等操作由操作系统提供。</li>
+</ul>
+</li>
+<li>的几种方式<ul>
+<li>在用户模式下发生中断，cpu从当前TSS的SS0和esp0中获取用于异常处理的栈</li>
+</ul>
+</li>
+</ul>
+<h2 id="向低特权级转移"><a href="#向低特权级转移" class="headerlink" title="向低特权级转移"></a>向低特权级转移</h2><p>CPU不允许从高特权级向低特权级转移，除非通过 <del>调用门（不会用的）</del>或者中断门。</p>
+<p>书中采用的方法是 iretd 通过pop操作将栈中的数据弹出到栈中。而通过这种方式修改CS寄存器中RPL的值便可以实现向低特权级的转移。</p>
+<ul>
+<li>总结：将栈中对应的CS选择子的RPL位置的值修改为3，然后执行 iretd 指令。CS.RPL就是CPU的CPL</li>
+</ul>
+<p>最后，还要将IOPL置0，不允许用户操作IO</p>
+<h2 id="不同特权级的进程"><a href="#不同特权级的进程" class="headerlink" title="不同特权级的进程"></a>不同特权级的进程</h2><p>进程与线程的区别是进程有<strong>独立的</strong>地址空间，指每个进程都有自己的pde和pte</p>
+<ul>
+<li>更新页表  将内核高1GB的内存复制到新页表对应位置</li>
+</ul>
+</div></article></div></main><footer><div class="paginator"><a class="prev" href="/2022/03/21/%E5%85%B3%E4%BA%8E%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%20/">prev</a><a class="next" href="/2021/10/17/CSAPP-ShellLab/">next</a></div><div class="copyright"><p>&copy; 2022 <a href="http://example.com">ahz-r3verse</a><br>Powered by <a href="https://hexo.io/" rel="noreferrer" target="_blank">Hexo</a></p></div></footer></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/barba.js/1.0.0/barba.min.js"></script><script>document.addEventListener('DOMContentLoaded', function() {
+    Barba.Pjax.start()
+})</script></body></html>

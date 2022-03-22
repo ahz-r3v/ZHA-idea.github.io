@@ -1,0 +1,36 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="index, follow"><title>OS-内存管理 • ZHA-idea</title><meta name="description" content="OS-内存管理 - ahz-r3verse"><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="https://unpkg.com/nanoreset@3.0.1/nanoreset.min.css"><link rel="stylesheet" href="/css/theme.css"><link rel="search" type="application/opensearchdescription+xml" href="/atom.xml" title="ZHA-idea"><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="ZHA-idea" type="application/atom+xml">
+</head><body><div class="wrap" id="barba-wrapper"><header><h1 class="branding"><a href="/" title="ZHA-idea"><img class="logo-image" src="/logo.svg" alt="logo"></a></h1><ul class="nav nav-list"><li class="nav-list-item"><a class="nav-list-link no-barba" href="/" target="_self">HOME</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/about" target="_self">ABOUT</a></li><li class="nav-list-item"><a class="nav-list-link no-barba" href="/archives" target="_self">ARCHIVES</a></li><li class="nav-list-item"></ul></header><div class="barba-container"><main class="container"><div class="post"><article class="post-block"><h1 class="post-title">OS-内存管理</h1><div class="post-info"><a></a>2022-03-21</div><div class="post-content"><h1 id="关于内存管理"><a href="#关于内存管理" class="headerlink" title="关于内存管理"></a>关于内存管理</h1><blockquote>
+<p>刚看完第八章，对内存管理好像还有点迷糊，决定还是先停下来写点东西理一理</p>
+</blockquote>
+<h2 id="一些个专有名词"><a href="#一些个专有名词" class="headerlink" title="一些个专有名词"></a>一些个专有名词</h2><ul>
+<li>逻辑地址</li>
+<li>线性地址</li>
+<li>虚拟内存</li>
+<li>平坦模型</li>
+</ul>
+<p>逻辑地址—(GDT)—&gt;线性地址—(分页)—&gt;物理地址</p>
+<p>平坦模型逻辑地址 == 线性地址</p>
+<h2 id="全局描述符表-GDT"><a href="#全局描述符表-GDT" class="headerlink" title="全局描述符表 GDT"></a>全局描述符表 GDT</h2><p>是保护模式下，对物理内存段进行登记的数据结构，可以做到对内存段的保护，可以向下兼容16位寻址。</p>
+<p>段描述符是8字节大小，其中包括段基址，段界限和控制位。内存的访问使用“段基址+段内偏移地址”，如果偏移地址超过了段界限表示的限制，则抛异常。</p>
+<p>由于历史遗留问题，段描述符数据分布很乱。</p>
+<ul>
+<li>进入保护模式前，为什么需要创建好描述符、选择子、GDT？这些是必要条件吗？  是的，保护模式寻址流程：选择子——&gt;在GDT中找到描述符——&gt;在描述符中找到段基地址，再加上偏移量就ok了。所以必须先准备好GDT才可以在保护模式使用内存。</li>
+</ul>
+<p>另外，本书学习Linux使用平坦模型，也就是说只有一个段，该段大小为4GB。段基地址为0，段界限*粒度为4GB。这4GB就是全部虚拟内存地址空间。（实际物理内存大小在bochsrc.disk中定义了是32MB）</p>
+<h2 id="页表"><a href="#页表" class="headerlink" title="页表"></a>页表</h2><p>分页是CPU在设计的时候就原生支持的功能，很好地体现了软硬件发展的相互促进。</p>
+<p>高10位为页目录项，中间10位页表索引，后12位是偏移量。</p>
+<p>书中采用二级页表，CPU中CR3寄存器指向页目录项pde，放在了0x100000处。pde最后一个目录项指向它自己。</p>
+<p>内核处在低端1MB内，书中把0xc0000000～0xc003fffff映射到物理地址0x0～0x3fffff上（4MB）</p>
+<ul>
+<li>启动分页的准备工作：  因为内核的位置发生改变，需要重新加载GDT；将各种段基地址改为3GB以上；将栈指针移到3GB以上</li>
+<li>开启分页后：  今后所有的寻址都要通过虚拟地址进行，地址的转换是CPU自动进行的，转换的规则就是位于CR3寄存器的pde和配套的pte</li>
+</ul>
+<h2 id="为什么要用虚拟内存"><a href="#为什么要用虚拟内存" class="headerlink" title="为什么要用虚拟内存"></a>为什么要用虚拟内存</h2><p>虚拟内存是操作系统物理内存和进程之间的中间层，它为进程隐藏了物理内存这一概念，为进程提供了更加简洁和易用的接口以及更加复杂的功能。</p>
+<p>简单来说就是一层抽象，以前的话物理内存是多大就只能用多大，不够用憋着，没有丝毫商量的空间。有了虚拟内存，就可以假装自己内存很大，然后通过软件调度的方式动态规划内存的使用。</p>
+<h2 id="虚拟内存的可行性"><a href="#虚拟内存的可行性" class="headerlink" title="虚拟内存的可行性"></a>虚拟内存的可行性</h2><p>现代计算机能提供极快的内存随机访问速度，所以即使实际地址不连续，对读取速度的影响也不大。</p>
+<h2 id="位图"><a href="#位图" class="headerlink" title="位图"></a>位图</h2><p>用1bit来映射单位更大的资源，在内存管理中可以用来表示页的状态，虚拟内存和物理内存都有自己专属的位图。因为位图很小，可以塞进低端1MB内.</p>
+<p>书中采用的策略是：虚拟地址空间用户低3GB，内核高1GB；物理内存空间用户和内核对半分，都是16MB。</p>
+<h2 id="内存管理"><a href="#内存管理" class="headerlink" title="内存管理"></a>内存管理</h2><p>文中采用修改页表的方式分配内存，添加虚拟地址与物理地址的映射。</p>
+</div></article></div></main><footer><div class="paginator"><a class="next" href="/2022/03/21/%E7%BA%BF%E7%A8%8B%E7%AE%A1%E7%90%86%E5%92%8C%E5%A4%9A%E4%BB%BB%E5%8A%A1%20/">next</a></div><div class="copyright"><p>&copy; 2022 <a href="http://example.com">ahz-r3verse</a><br>Powered by <a href="https://hexo.io/" rel="noreferrer" target="_blank">Hexo</a></p></div></footer></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/barba.js/1.0.0/barba.min.js"></script><script>document.addEventListener('DOMContentLoaded', function() {
+    Barba.Pjax.start()
+})</script></body></html>

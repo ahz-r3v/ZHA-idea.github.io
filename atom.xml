@@ -6,7 +6,7 @@
   <link href="http://example.com/atom.xml" rel="self"/>
   
   <link href="http://example.com/"/>
-  <updated>2021-10-17T13:04:45.961Z</updated>
+  <updated>2022-03-22T03:30:29.051Z</updated>
   <id>http://example.com/</id>
   
   <author>
@@ -15,6 +15,55 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>OS-内存管理</title>
+    <link href="http://example.com/2022/03/21/%E5%85%B3%E4%BA%8E%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%20/"/>
+    <id>http://example.com/2022/03/21/%E5%85%B3%E4%BA%8E%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%20/</id>
+    <published>2022-03-20T16:00:00.000Z</published>
+    <updated>2022-03-22T03:30:29.051Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="关于内存管理"><a href="#关于内存管理" class="headerlink" title="关于内存管理"></a>关于内存管理</h1><blockquote><p>刚看完第八章，对内存管理好像还有点迷糊，决定还是先停下来写点东西理一理</p></blockquote><h2 id="一些个专有名词"><a href="#一些个专有名词" class="headerlink" title="一些个专有名词"></a>一些个专有名词</h2><ul><li>逻辑地址</li><li>线性地址</li><li>虚拟内存</li><li>平坦模型</li></ul><p>逻辑地址—(GDT)—&gt;线性地址—(分页)—&gt;物理地址</p><p>平坦模型逻辑地址 == 线性地址</p><h2 id="全局描述符表-GDT"><a href="#全局描述符表-GDT" class="headerlink" title="全局描述符表 GDT"></a>全局描述符表 GDT</h2><p>是保护模式下，对物理内存段进行登记的数据结构，可以做到对内存段的保护，可以向下兼容16位寻址。</p><p>段描述符是8字节大小，其中包括段基址，段界限和控制位。内存的访问使用“段基址+段内偏移地址”，如果偏移地址超过了段界限表示的限制，则抛异常。</p><p>由于历史遗留问题，段描述符数据分布很乱。</p><ul><li>进入保护模式前，为什么需要创建好描述符、选择子、GDT？这些是必要条件吗？  是的，保护模式寻址流程：选择子——&gt;在GDT中找到描述符——&gt;在描述符中找到段基地址，再加上偏移量就ok了。所以必须先准备好GDT才可以在保护模式使用内存。</li></ul><p>另外，本书学习Linux使用平坦模型，也就是说只有一个段，该段大小为4GB。段基地址为0，段界限*粒度为4GB。这4GB就是全部虚拟内存地址空间。（实际物理内存大小在bochsrc.disk中定义了是32MB）</p><h2 id="页表"><a href="#页表" class="headerlink" title="页表"></a>页表</h2><p>分页是CPU在设计的时候就原生支持的功能，很好地体现了软硬件发展的相互促进。</p><p>高10位为页目录项，中间10位页表索引，后12位是偏移量。</p><p>书中采用二级页表，CPU中CR3寄存器指向页目录项pde，放在了0x100000处。pde最后一个目录项指向它自己。</p><p>内核处在低端1MB内，书中把0xc0000000～0xc003fffff映射到物理地址0x0～0x3fffff上（4MB）</p><ul><li>启动分页的准备工作：  因为内核的位置发生改变，需要重新加载GDT；将各种段基地址改为3GB以上；将栈指针移到3GB以上</li><li>开启分页后：  今后所有的寻址都要通过虚拟地址进行，地址的转换是CPU自动进行的，转换的规则就是位于CR3寄存器的pde和配套的pte</li></ul><h2 id="为什么要用虚拟内存"><a href="#为什么要用虚拟内存" class="headerlink" title="为什么要用虚拟内存"></a>为什么要用虚拟内存</h2><p>虚拟内存是操作系统物理内存和进程之间的中间层，它为进程隐藏了物理内存这一概念，为进程提供了更加简洁和易用的接口以及更加复杂的功能。</p><p>简单来说就是一层抽象，以前的话物理内存是多大就只能用多大，不够用憋着，没有丝毫商量的空间。有了虚拟内存，就可以假装自己内存很大，然后通过软件调度的方式动态规划内存的使用。</p><h2 id="虚拟内存的可行性"><a href="#虚拟内存的可行性" class="headerlink" title="虚拟内存的可行性"></a>虚拟内存的可行性</h2><p>现代计算机能提供极快的内存随机访问速度，所以即使实际地址不连续，对读取速度的影响也不大。</p><h2 id="位图"><a href="#位图" class="headerlink" title="位图"></a>位图</h2><p>用1bit来映射单位更大的资源，在内存管理中可以用来表示页的状态，虚拟内存和物理内存都有自己专属的位图。因为位图很小，可以塞进低端1MB内.</p><p>书中采用的策略是：虚拟地址空间用户低3GB，内核高1GB；物理内存空间用户和内核对半分，都是16MB。</p><h2 id="内存管理"><a href="#内存管理" class="headerlink" title="内存管理"></a>内存管理</h2><p>文中采用修改页表的方式分配内存，添加虚拟地址与物理地址的映射。</p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;h1 id=&quot;关于内存管理&quot;&gt;&lt;a href=&quot;#关于内存管理&quot; class=&quot;headerlink&quot; title=&quot;关于内存管理&quot;&gt;&lt;/a&gt;关于内存管理&lt;/h1&gt;&lt;blockquote&gt;
+&lt;p&gt;刚看完第八章，对内存管理好像还有点迷糊，决定还是先停下来写点东西理一理&lt;/p&gt;
+&lt;</summary>
+      
+    
+    
+    
+    
+    <category term="OS" scheme="http://example.com/tags/OS/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>OS-多线程和多任务</title>
+    <link href="http://example.com/2022/03/21/%E7%BA%BF%E7%A8%8B%E7%AE%A1%E7%90%86%E5%92%8C%E5%A4%9A%E4%BB%BB%E5%8A%A1%20/"/>
+    <id>http://example.com/2022/03/21/%E7%BA%BF%E7%A8%8B%E7%AE%A1%E7%90%86%E5%92%8C%E5%A4%9A%E4%BB%BB%E5%8A%A1%20/</id>
+    <published>2022-03-20T16:00:00.000Z</published>
+    <updated>2022-03-22T03:30:34.041Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="线程管理和多任务"><a href="#线程管理和多任务" class="headerlink" title="线程管理和多任务"></a>线程管理和多任务</h1><blockquote><p>这是一个引用</p></blockquote><h2 id="为什么要用TTS"><a href="#为什么要用TTS" class="headerlink" title="为什么要用TTS"></a>为什么要用TTS</h2><p>几乎所有x86的现代操作系统都不使用 CPU 给的那一套，但必须要用TSS实现向更高特权级的跳转。</p><p>Linux只创建了一个TSS，所有任务共享。</p><ul><li>结论：我们使用TTS的唯一理由是为 0 特权级的任务提供栈</li></ul><h2 id="向高特权级转移"><a href="#向高特权级转移" class="headerlink" title="向高特权级转移"></a>向高特权级转移</h2><ul><li>的过程<ul><li>进入高特权级时，cpu自动将TSS中esp0作为栈指针，然后后来的压栈等操作由操作系统提供。</li></ul></li><li>的几种方式<ul><li>在用户模式下发生中断，cpu从当前TSS的SS0和esp0中获取用于异常处理的栈</li></ul></li></ul><h2 id="向低特权级转移"><a href="#向低特权级转移" class="headerlink" title="向低特权级转移"></a>向低特权级转移</h2><p>CPU不允许从高特权级向低特权级转移，除非通过 <del>调用门（不会用的）</del>或者中断门。</p><p>书中采用的方法是 iretd 通过pop操作将栈中的数据弹出到栈中。而通过这种方式修改CS寄存器中RPL的值便可以实现向低特权级的转移。</p><ul><li>总结：将栈中对应的CS选择子的RPL位置的值修改为3，然后执行 iretd 指令。CS.RPL就是CPU的CPL</li></ul><p>最后，还要将IOPL置0，不允许用户操作IO</p><h2 id="不同特权级的进程"><a href="#不同特权级的进程" class="headerlink" title="不同特权级的进程"></a>不同特权级的进程</h2><p>进程与线程的区别是进程有<strong>独立的</strong>地址空间，指每个进程都有自己的pde和pte</p><ul><li>更新页表  将内核高1GB的内存复制到新页表对应位置</li></ul>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;h1 id=&quot;线程管理和多任务&quot;&gt;&lt;a href=&quot;#线程管理和多任务&quot; class=&quot;headerlink&quot; title=&quot;线程管理和多任务&quot;&gt;&lt;/a&gt;线程管理和多任务&lt;/h1&gt;&lt;blockquote&gt;
+&lt;p&gt;这是一个引用&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&quot;</summary>
+      
+    
+    
+    
+    
+    <category term="OS" scheme="http://example.com/tags/OS/"/>
+    
+  </entry>
   
   <entry>
     <title>CSAPP-ShellLab</title>
